@@ -11,11 +11,7 @@ class MainView : View() {
             tryUpdate()
         }
     }
-    private val failButton = button("Fail") {
-        action {
-            infoText.text = FAIL_MESSAGE
-        }
-    }
+
     private val infoText = label("")
     private val table = tableview(controller.stationStatus) {
         val name = readonlyColumn("Name", Station::name).remainingWidth()
@@ -45,7 +41,6 @@ class MainView : View() {
             this += infoText
             tryUpdate()
         }
-
     }
 
 
@@ -55,7 +50,7 @@ class MainView : View() {
             val milis = measureTimeMillis {
                 controller.updateStationInfo()
             }
-            infoText.text="Fetched in ${milis/1000.0}s"
+            infoText.text = "Fetched in ${milis / 1000.0}s"
 
         } catch (e: RequestFailedException) {
             infoText.text = FAIL_MESSAGE

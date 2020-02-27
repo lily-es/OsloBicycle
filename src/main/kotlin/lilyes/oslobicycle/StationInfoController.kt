@@ -28,13 +28,7 @@ class StationInfoController {
         }
     }
 
-    fun fail() {
-        stationStatus.clear()
-        throw RequestFailedException("")
-    }
-
-
-    //might not be necessary to process the station names over and over, but they might change at any time
+    //might not be necessary to fetch the station names every time, but they might change at any time
     private fun processStations(stationInfoJson: JSONObject, stationStatusJson: JSONObject): List<Station> {
         val stationNames = processStationNames(stationInfoJson)
         val stations = mutableListOf<Station>()
@@ -52,6 +46,7 @@ class StationInfoController {
                 } else {
                     0
                 }
+
                 val locksAvailable = if (stationStatus.getInt("is_returning") == 1) {
                     try {
                         stationStatus.getInt("num_docks_available")
@@ -65,7 +60,6 @@ class StationInfoController {
                 //possible design choice, hide stations that have no available bikes and locks?
                 stations.add(Station(stationName, bikesAvailable, locksAvailable))
             }
-
         }
         return stations
     }
