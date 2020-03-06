@@ -1,5 +1,5 @@
 # OsloBicycle
-Kotlin [TornadoFX](https://github.com/edvin/tornadofx) app to display available locks and bikes for [Oslo City Bike](https://oslobysykkel.no/en)
+Kotlin [TornadoFX](https://github.com/edvin/tornadofx) app to display available locks and bikes for [Oslo City Bike](https://oslobysykkel.no/en). Needs JDK11
 
 ## How to run
 Run the project with ```mvn clean javafx:run```
