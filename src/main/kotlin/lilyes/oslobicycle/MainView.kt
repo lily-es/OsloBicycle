@@ -4,8 +4,12 @@ import javafx.scene.layout.Priority
 import tornadofx.*
 import kotlin.system.measureTimeMillis
 
-class MainView : View() {
+class MainView() : View() {
+
     private val controller = StationInfoController()
+
+    private val stations = mutableListOf<Station>().asObservable()
+
     private val button = button("Refresh") {
         action {
             tryUpdate()
@@ -13,7 +17,7 @@ class MainView : View() {
     }
 
     private val infoText = label("")
-    private val table = tableview(controller.stationStatus) {
+    private val table = tableview(stations) {
         val name = readonlyColumn("Name", Station::name).remainingWidth()
         val bikes = readonlyColumn("Available Bikes", Station::availableBikes)
         val locks = readonlyColumn("Available Locks", Station::availableLocks)
@@ -39,8 +43,8 @@ class MainView : View() {
             this += button
             this += table
             this += infoText
-            tryUpdate()
         }
+        tryUpdate()
     }
 
 
@@ -48,7 +52,7 @@ class MainView : View() {
         try {
             infoText.text = ""
             val milis = measureTimeMillis {
-                controller.updateStationInfo()
+                stations.setAll(controller.getStationInfo())
             }
             infoText.text = "Fetched in ${milis / 1000.0}s"
 

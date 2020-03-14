@@ -1,65 +1,50 @@
 package lilyes.oslobicycle
 
-import tornadofx.*
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import kong.unirest.Unirest
-import kong.unirest.json.JSONException
+import kong.unirest.UnirestException
 import kong.unirest.json.JSONObject
+
 import java.lang.Exception
 
 class StationInfoController {
-    val stationStatus = mutableListOf<Station>().asObservable()
+    fun getStationInfo(): List<Station> {
+        try{
+            val stationStatusResponse = Unirest.get(STATUS_URL)
+                    .header("Client-Identifier", IDENTIFIER)
+                    .accept("application/json")
+                    .asJson()
 
-    fun updateStationInfo() {
-        val stationStatusResponse = Unirest.get(STATUS_URL)
-                .header("Client-Identifier", IDENTIFIER)
-                .accept("application/json")
-                .asJson()
+            val stationInfoResponse = Unirest.get(INFO_URL)
+                    .header("Client-Identifier", IDENTIFIER)
+                    .accept("application/json")
+                    .asJson()
 
-        val stationInfoResponse = Unirest.get(INFO_URL)
-                .header("Client-Identifier", IDENTIFIER)
-                .accept("application/json")
-                .asJson()
-
-        if (stationStatusResponse.isSuccess && stationInfoResponse.isSuccess) {
-            val stationList = processStations(stationInfoResponse.body.`object`, stationStatusResponse.body.`object`)
-            stationStatus.setAll(stationList)
-        } else {
-            throw RequestFailedException("Failed to get info")
+            if (stationStatusResponse.isSuccess && stationInfoResponse.isSuccess) {
+                return processStations(stationInfoResponse.body.`object`, stationStatusResponse.body.`object`)
+            } else {
+                throw RequestFailedException("Failed to get info")
+            }
+        } catch (e: UnirestException){
+            throw RequestFailedException("Failed to get info", e)
         }
+
     }
 
-    //might not be necessary to fetch the station names every time, but they might change at any time
     private fun processStations(stationInfoJson: JSONObject, stationStatusJson: JSONObject): List<Station> {
-        val stationNames = processStationNames(stationInfoJson)
         val stations = mutableListOf<Station>()
 
-        val stationsJson = stationStatusJson.getJSONObject("data").getJSONArray("stations")
+        val stationNames = processStationNames(stationInfoJson)
+        val stationsStatus: List<StationStatus> = MAPPER.readValue(stationStatusJson.getJSONObject("data")
+                .getJSONArray("stations").toString())
 
-        for (x in 0 until stationsJson.length()) {
-            val stationStatus = stationsJson.getJSONObject(x)
-
-            val stationName = stationNames[stationStatus.getString("station_id")] ?: continue //would also log
-
-            if (stationStatus.getInt("is_installed") == 1) {
-                val bikesAvailable = if (stationStatus.getInt("is_renting") == 1) {
-                    stationStatus.getInt("num_bikes_available")
-                } else {
-                    0
-                }
-
-                val locksAvailable = if (stationStatus.getInt("is_returning") == 1) {
-                    try {
-                        stationStatus.getInt("num_docks_available")
-                        //If key doesnt exist it means its a virtual station, which has unlimited locks(v2.0 RC)
-                    } catch (e: JSONException) {
-                        99
-                    }
-                } else {
-                    0
-                }
-                //possible design choice, hide stations that have no available bikes and locks?
-                stations.add(Station(stationName, bikesAvailable, locksAvailable))
+        for (status: StationStatus in stationsStatus){
+            val name = stationNames[status.stationId] ?: continue//log this
+            if(status.isInstalled){
+                stations.add(Station(name, status.numBikesAvailable, status.numDocksAvailable))
             }
+
         }
         return stations
     }
@@ -74,11 +59,15 @@ class StationInfoController {
         return stationNames
     }
 
+
     companion object {
         const val IDENTIFIER = "lilyes - oslobicycle"
         const val STATUS_URL = "https://gbfs.urbansharing.com/oslobysykkel.no/station_status.json"
         const val INFO_URL = "https://gbfs.urbansharing.com/oslobysykkel.no/station_information.json"
+        private val MAPPER = jacksonObjectMapper()
     }
 }
 
-class RequestFailedException(message: String) : Exception(message)
+class RequestFailedException(message: String, override val cause: Throwable?) : Exception(message, cause){
+    constructor(message: String) : this(message, null)
+}
